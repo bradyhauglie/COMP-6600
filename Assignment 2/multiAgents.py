@@ -318,25 +318,21 @@ def betterEvaluationFunction(currentGameState: GameState):
     ScaredTimes = [ghostState.scaredTimer for ghostState in GhostStates]
     capsules = currentGameState.getCapsules()
 
-    score = 0
+    score = currentGameState.getScore()
     foodList = Food.asList()
 
     score -= 10 * len(foodList)
-    if ScaredTimes[0] > 0:
-        score += 100 * len(ScaredTimes)
     for ghostState, scaredTime in zip(GhostStates, ScaredTimes):
         ghostPos = ghostState.getPosition()
         dist = manhattanDistance(currentPos, ghostPos)
         if scaredTime > 0:
+            score += 100
             score += 200.0 / dist
         else:
             if dist < 2:
                 score -= 500
             else:
                 score -= 2.0 / dist
-    for action in currentGameState.getLegalActions(0):
-        if action == Directions.STOP:
-            score -= 10
 
     if foodList:
         minFoodDist = min([manhattanDistance(currentPos, food) for food in Food.asList()])
