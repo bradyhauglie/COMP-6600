@@ -65,6 +65,31 @@ class ValueIterationAgent(ValueEstimationAgent):
           value iteration, V_k+1(...) depends on V_k(...)'s.
         """
         "*** YOUR CODE HERE ***"
+        # Initialize the values for all states to 0
+        states = self.mdp.getStates()
+        for state in states:
+            self.values[state] = 0
+        # Perform value iteration for the specified number of iterations
+        for i in range(self.iterations):
+            # Create a copy of the current values to update
+            newValues = self.values.copy()
+            for state in states:
+                # If the state is terminal, skip it
+                if self.mdp.isTerminal(state):
+                    continue
+                # Initialize the maximum Q-value for this state
+                maxQValue = float('-inf')
+                # Iterate over all possible actions for this state
+                for action in self.mdp.getPossibleActions(state):
+                    # Calculate the Q-value for this action
+                    qValue = self.computeQValueFromValues(state, action)
+                    # Update the maximum Q-value if necessary
+                    maxQValue = max(maxQValue, qValue)
+                # Update the value for this state using the maximum Q-value
+                newValues[state] = maxQValue
+            # Update the values with the new values calculated in this iteration
+            self.values = newValues
+        return self.values
 
     def getValue(self, state):
         """
@@ -78,7 +103,15 @@ class ValueIterationAgent(ValueEstimationAgent):
           value function stored in self.values.
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        # Initialize the Q-value to 0
+        qValue = 0
+        # Iterate over all possible next states and their probabilities
+        for nextState, prob in self.mdp.getTransitionStatesAndProbs(state, action):
+            # Calculate the reward for this action and next state
+            reward = self.mdp.getReward(state, action, nextState)
+            # Update the Q-value using the Bellman equation
+            qValue += prob * (reward + self.discount * self.values[nextState])
+        return qValue
 
     def computeActionFromValues(self, state):
         """
@@ -90,7 +123,19 @@ class ValueIterationAgent(ValueEstimationAgent):
           terminal state, you should return None.
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        # Initialize the best action and its value
+        bestAction = None
+        bestValue = float('-inf')
+        # Iterate over all possible actions for this state
+        for action in self.mdp.getPossibleActions(state):
+            # Calculate the Q-value for this action
+            qValue = self.computeQValueFromValues(state, action)
+            # Update the best action if necessary
+            if qValue > bestValue:
+                bestValue = qValue
+                bestAction = action
+        # Return the best action found
+        return bestAction
 
     def getPolicy(self, state):
         return self.computeActionFromValues(state)
