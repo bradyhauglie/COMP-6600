@@ -61,7 +61,23 @@ def constructBayesNet(gameState: hunters.GameState):
     variableDomainsDict = {}
 
     "*** YOUR CODE HERE ***"
-    raiseNotDefined()
+    # Variables
+    variables = [PAC, GHOST0, GHOST1, OBS0, OBS1]
+
+    # Edges (dependencies)
+    edges = [
+        (PAC, OBS0), (PAC, OBS1),  
+        (GHOST0, OBS0), (GHOST1, OBS1)  
+    ]
+
+    # Domains
+    variableDomainsDict = {
+        PAC: [(x, y) for x in range(X_RANGE) for y in range(Y_RANGE)],
+        GHOST0: [(x, y) for x in range(X_RANGE) for y in range(Y_RANGE)],
+        GHOST1: [(x, y) for x in range(X_RANGE) for y in range(Y_RANGE)],
+        OBS0: list(range(manhattanDistance((0,0),(X_RANGE,Y_RANGE)) + MAX_NOISE - 1)),  # Possible noisy distances
+        OBS1: list(range(manhattanDistance((0,0),(X_RANGE,Y_RANGE)) + MAX_NOISE - 1))
+    }
     "*** END YOUR CODE HERE ***"
 
     net = bn.constructEmptyBayesNet(variables, edges, variableDomainsDict)
@@ -182,7 +198,24 @@ def inferenceByVariableEliminationWithCallTracking(callTrackingList=None):
             eliminationOrder = sorted(list(eliminationVariables))
 
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        factors = bayesNet.getAllCPTsWithEvidence(evidenceDict)
+
+        for eliminationVariable in eliminationOrder:
+            # Join on all factors that contain the elimination variable
+            factors, joinedFactor = joinFactorsByVariable(factors, eliminationVariable)
+
+            # Eliminate the variable from the joined factor
+            if len(joinedFactor.unconditionedVariables()) > 1:
+                factors.append(eliminate(joinedFactor, eliminationVariable))
+            else:
+                # Discard the factor if it has only one unconditioned variable
+                pass
+
+        finalFactor = joinFactors(factors)
+
+        normalizedFactor = normalize(finalFactor)
+
+        return normalizedFactor
         "*** END YOUR CODE HERE ***"
 
 
@@ -323,7 +356,12 @@ class DiscreteDistribution(dict):
         {}
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        total = self.total()
+        if total == 0:
+            return
+        for key in self.keys():
+            self[key] /= total
+
         "*** END YOUR CODE HERE ***"
 
     def sample(self):
@@ -348,7 +386,16 @@ class DiscreteDistribution(dict):
         0.0
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        total = self.total()
+        if total == 0:
+            return None
+        pick = random.uniform(0, total)
+        for key in self.keys():
+            pick -= self[key]
+            if pick <= 0:
+                return key
+        return None
+    
         "*** END YOUR CODE HERE ***"
 
 
@@ -423,7 +470,18 @@ class InferenceModule:
         Return the probability P(noisyDistance | pacmanPosition, ghostPosition).
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        # If the ghost is in jail, the probability depends on noisyDistance
+        if ghostPosition == jailPosition:
+            return 1.0 if noisyDistance is None else 0.0
+
+        # If the ghost is not in jail, calculate the true distance
+        if noisyDistance is None:
+            return 0.0
+
+        trueDistance = manhattanDistance(pacmanPosition, ghostPosition)
+        prob = busters.getObservationProbability(noisyDistance, trueDistance)
+        return prob
+    
         "*** END YOUR CODE HERE ***"
 
     def setGhostPosition(self, gameState, ghostPosition, index):
@@ -536,7 +594,17 @@ class ExactInference(InferenceModule):
         position is known.
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        pacmanPosition = gameState.getPacmanPosition()
+        jailPosition = self.getJailPosition()
+        newBeliefs = DiscreteDistribution()
+        for ghostPosition in self.allPositions:
+            # Calculate the probability of the observation given the ghost position
+            prob = self.getObservationProb(observation, pacmanPosition, ghostPosition, jailPosition)
+            # Update the belief for this position
+            newBeliefs[ghostPosition] = prob * self.beliefs[ghostPosition]
+        
+        self.beliefs = newBeliefs
+            
         "*** END YOUR CODE HERE ***"
         self.beliefs.normalize()
     
@@ -554,7 +622,15 @@ class ExactInference(InferenceModule):
         current position is known.
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        newBeliefs = DiscreteDistribution()
+        for ghostPosition in self.allPositions:
+            # Get the distribution of the ghost's next position given its current position
+            dist = self.getPositionDistribution(gameState, ghostPosition)
+            # Update the belief for the new position
+            for nextPosition, prob in dist.items():
+                newBeliefs[nextPosition] += prob * self.beliefs[ghostPosition]
+        self.beliefs = newBeliefs
+        self.beliefs.normalize()
         "*** END YOUR CODE HERE ***"
 
     def getBeliefDistribution(self):
